@@ -1,6 +1,6 @@
-// Function to toggle the chatbot window
+
 function toggleChatbot() {
-    console.log("Chatbot toggle clicked"); // Debug statement to check if the function is called
+    console.log("IOCL Bot toggle clicked"); // Debug statement to check if the function is called
     const chatbotWindow = document.getElementById('chatbot-window');
     
     if (chatbotWindow.classList.contains('active')) {
@@ -16,6 +16,9 @@ function toggleChatbot() {
         chatbotWindow.style.display = 'flex';
         chatbotWindow.classList.add('active');
         chatbotWindow.style.animation = 'fadeIn 0.3s ease-out';
+        
+        // Send the initial greeting message when opened
+        addMessageToChat('IOCL Bot', 'Hello, how may I assist you?');
     }
 }
 
