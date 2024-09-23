@@ -1,80 +1,49 @@
+// Environment variables (Replace with actual values)
+const endpoint = "https://iocl-hr-openai-service.openai.azure.com/";
+const deployment = "gpt-4o";
+const subscriptionKey = "9f82a1e82c7444e8a8453f9d7f787e2a"; // Your actual API key
 
-function toggleChatbot() {
-    console.log("IOCL Bot toggle clicked"); // Debug statement to check if the function is called
-    const chatbotWindow = document.getElementById('chatbot-window');
-    
-    if (chatbotWindow.classList.contains('active')) {
-        // Fade out animation
-        chatbotWindow.classList.remove('active');
-        chatbotWindow.style.animation = 'fadeOut 0.3s ease-out';
-        
-        setTimeout(() => {
-            chatbotWindow.style.display = 'none';
-        }, 300); // Delay to match animation time
-    } else {
-        // Show the chatbot
-        chatbotWindow.style.display = 'flex';
-        chatbotWindow.classList.add('active');
-        chatbotWindow.style.animation = 'fadeIn 0.3s ease-out';
-        
-        // Send the initial greeting message when opened
-        addMessageToChat('IOCL Bot', 'Hello, how may I assist you?');
-    }
-}
-
-// Function to send the message and get a response from the API
-async function sendMessage() {
-    const inputField = document.getElementById('chat-input');
-    const message = inputField.value.trim();
-
-    if (message === '') return;
-
-    // Add user's message to chat window
-    addMessageToChat('You', message);
-    inputField.value = '';  // Clear input
-
-    // Call the chatbot API and get the response
-    const chatbotResponse = await callChatbotAPI(message);
-    
-    console.log("API Response: ", chatbotResponse); // Debugging statement to log the API response
-    
-    // Check if response should include a PDF link
-    let responseWithLink = chatbotResponse;
-    if (message.toLowerCase().includes('transfer allowance')) {
-        console.log("Adding View in PDF link"); // Debugging log
-        // Add the "View in PDF" link at the end of the response
-        responseWithLink += `<br><a href="https://drive.google.com/file/d/1MP06KjBCpyR1882IFEu-2qYKJKIUzJ40/view?usp=sharing" target="_blank" style="color: blue; text-decoration: underline;">View in PDF</a>`;
-    }
-    
-    console.log("Final Response with Link: ", responseWithLink); // Log the final response
-    addMessageToChat('Chatbot', responseWithLink);
-}
-
-// Function to call the chatbot API
+// Function to call the chatbot API with consistent settings from Azure OpenAI Studio
 async function callChatbotAPI(message) {
-    const url = 'https://iocl-hr-openai-service.openai.azure.com/openai/deployments/gpt-4o/chat/completions?api-version=2023-03-15-preview';
-    const apiKey = '9f82a1e82c7444e8a8453f9d7f787e2a'; // Your API key
+    const url = `${endpoint}/openai/deployments/${deployment}/chat/completions?api-version=2024-02-15-preview`; // Updated API version as seen in the screenshot
+
+    // Prepare the headers and body based on the Azure OpenAI Studio configuration
+    const headers = {
+        "Content-Type": "application/json",
+        "api-key": subscriptionKey
+    };
+
+    // Payload as shown in the Azure OpenAI configuration
+    const body = {
+        "messages": [
+            { 
+                "role": "system", 
+                "content": "You are an AI assistant that helps people find information." 
+            },
+            { 
+                "role": "user", 
+                "content": message 
+            }
+        ],
+        "max_tokens": 800,  // Match the max tokens as shown
+        "temperature": 0.7, // Match the temperature setting
+        "top_p": 0.95,      // Match the top_p setting
+        "frequency_penalty": 0,
+        "presence_penalty": 0
+    };
 
     try {
+        // Fetch response from the Azure OpenAI endpoint
         const response = await fetch(url, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'api-key': apiKey // Correct key for Azure OpenAI
-            },
-            body: JSON.stringify({
-                "messages": [
-                    { "role": "system", "content": "You are an assistant." },
-                    { "role": "user", "content": message }
-                ],
-                "max_tokens": 900, // Increase this value to allow longer responses
-                "temperature": 0.7 // Adjust temperature if needed
-            })
+            headers: headers,
+            body: JSON.stringify(body)
         });
 
         if (response.ok) {
             const jsonResponse = await response.json();
-            return jsonResponse.choices[0].message.content;
+            console.log("Received response:", jsonResponse);
+            return jsonResponse.choices[0].message.content; // Extracting the message content
         } else {
             console.error('Error response from API:', response.status, response.statusText);
             return 'Error retrieving a response. Please try again later.';
@@ -84,11 +53,52 @@ async function callChatbotAPI(message) {
         return 'Error retrieving a response. Please check your connection and try again later.';
     }
 }
+
+// Function to send the message and handle response, including PDF checks
+async function sendMessage() {
+    const inputField = document.getElementById('chat-input');
+    const message = inputField.value.trim();
+
+    if (message === '') return;
+
+    addMessageToChat('You', message);
+    inputField.value = '';
+
+    const chatbotResponse = await callChatbotAPI(message);
+    let responseWithLink = chatbotResponse;
+
+    // Check if the response includes information indicating it's from a PDF
+    if (chatbotResponse.toLowerCase().includes('pdf') || message.toLowerCase().includes('transfer allowance')) {
+        responseWithLink += `<br><a href="https://ioclhhrchatgpt.blob.core.windows.net/documents/hrhbtb.pdf" target="_blank" style="color: blue; text-decoration: underline;">View in PDF</a>`;
+    } else {
+        responseWithLink += `<br><small style="color: grey;">It was generated by AI.</small>`;
+    }
+
+    addMessageToChat('IOCL Bot', responseWithLink);
+}
+
 // Function to add a message to the chat window
 function addMessageToChat(sender, message) {
     const messagesContainer = document.getElementById('chatbot-messages');
     const messageElement = document.createElement('div');
-    messageElement.innerHTML = `${sender}: ${message}`; // Using innerHTML to handle links correctly
+    messageElement.innerHTML = `${sender}: ${message}`;
     messagesContainer.appendChild(messageElement);
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;  // Auto scroll
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+// Function to toggle the chatbot window
+function toggleChatbot() {
+    const chatbotWindow = document.getElementById('chatbot-window');
+    if (chatbotWindow.classList.contains('active')) {
+        chatbotWindow.classList.remove('active');
+        chatbotWindow.style.animation = 'fadeOut 0.3s ease-out';
+        setTimeout(() => {
+            chatbotWindow.style.display = 'none';
+        }, 300);
+    } else {
+        chatbotWindow.style.display = 'flex';
+        chatbotWindow.classList.add('active');
+        chatbotWindow.style.animation = 'fadeIn 0.3s ease-out';
+        addMessageToChat('IOCL Bot', 'Hello, how may I assist you?');
+    }
 }
